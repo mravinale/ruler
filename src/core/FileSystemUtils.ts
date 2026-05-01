@@ -1,7 +1,9 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { SKILLS_DIR } from '../constants';
+import { SKILLS_DIR, RULER_SUBAGENTS_PATH } from '../constants';
+
+const SUBAGENTS_DIR_NAME = path.basename(RULER_SUBAGENTS_PATH);
 
 /**
  * Gets the XDG config directory path, falling back to ~/.config if XDG_CONFIG_HOME is not set.
@@ -58,13 +60,30 @@ export async function findRulerDir(
 }
 
 /**
+ * Options for {@link readMarkdownFiles}.
+ */
+export interface ReadMarkdownFilesOptions {
+  /**
+   * When true, include `.ruler/agents/*.md` in the returned set so they are
+   * concatenated into the top-level generated rule files. When false or
+   * omitted, `.ruler/agents/` is skipped, mirroring `.ruler/skills/`.
+   */
+  includeAgents?: boolean;
+}
+
+/**
  * Recursively reads all Markdown (.md) files in rulerDir, returning their paths and contents.
  * Files are sorted alphabetically by path.
+ *
+ * `.ruler/skills/` is always skipped (skills are propagated separately).
+ * `.ruler/agents/` is skipped unless `options.includeAgents` is `true`.
  */
 export async function readMarkdownFiles(
   rulerDir: string,
+  options: ReadMarkdownFilesOptions = {},
 ): Promise<{ path: string; content: string }[]> {
   const mdFiles: { path: string; content: string }[] = [];
+  const includeAgents = options.includeAgents === true;
 
   // Gather all markdown files (recursive) first
   async function walk(dir: string) {
@@ -84,12 +103,21 @@ export async function readMarkdownFiles(
         }
       }
       if (isDir) {
-        // Skip .ruler/skills; skills are propagated separately and should not be concatenated
         const relativeFromRoot = path.relative(rulerDir, fullPath);
+        // Skip .ruler/skills; skills are propagated separately and should not be concatenated
         const isSkillsDir =
           relativeFromRoot === SKILLS_DIR ||
           relativeFromRoot.startsWith(`${SKILLS_DIR}${path.sep}`);
         if (isSkillsDir) {
+          continue;
+        }
+        // Skip .ruler/agents unless explicitly opted in via subagents.include_in_rules.
+        // Subagents are propagated separately to native locations and should not pollute
+        // the top-level rule concatenation by default.
+        const isAgentsDir =
+          relativeFromRoot === SUBAGENTS_DIR_NAME ||
+          relativeFromRoot.startsWith(`${SUBAGENTS_DIR_NAME}${path.sep}`);
+        if (isAgentsDir && !includeAgents) {
           continue;
         }
         await walk(fullPath);
