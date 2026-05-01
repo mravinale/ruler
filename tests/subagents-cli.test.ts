@@ -45,7 +45,7 @@ describe('Subagents apply integration', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('writes subagents to all four targets when default applies to claude+cursor+codex+copilot', async () => {
+  it('writes subagents to all four targets when explicitly enabled for claude+cursor+codex+copilot', async () => {
     await setupRulerProject(tmpDir);
     await writeSubagent(tmpDir, 'reviewer');
 
@@ -63,7 +63,7 @@ describe('Subagents apply integration', () => {
       true,
       undefined,
       undefined,
-      undefined,
+      true, // subagentsEnabled — explicit opt-in (default is disabled per spec)
     );
 
     await expect(
