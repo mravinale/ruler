@@ -156,12 +156,12 @@ describe('Subagents apply integration', () => {
     ).rejects.toThrow();
   });
 
-  it('respects [subagents] enabled = false in ruler.toml', async () => {
+  it('respects [agents] enabled = false in ruler.toml', async () => {
     await setupRulerProject(tmpDir);
     await writeSubagent(tmpDir, 'reviewer');
     await fs.writeFile(
       path.join(tmpDir, '.ruler', 'ruler.toml'),
-      '[subagents]\nenabled = false\n',
+      '[agents]\nenabled = false\n',
     );
 
     await applyAllAgentConfigs(
@@ -191,7 +191,7 @@ describe('Subagents apply integration', () => {
     await writeSubagent(tmpDir, 'reviewer');
     await fs.writeFile(
       path.join(tmpDir, '.ruler', 'ruler.toml'),
-      '[subagents]\nenabled = false\n',
+      '[agents]\nenabled = false\n',
     );
 
     await applyAllAgentConfigs(
