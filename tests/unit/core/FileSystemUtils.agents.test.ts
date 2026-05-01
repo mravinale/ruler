@@ -89,6 +89,31 @@ describe('FileSystemUtils - agents (subagent) exclusion', () => {
     );
   });
 
+  it('does not resurrect a stale generated root AGENTS.md when only .ruler/agents existed', async () => {
+    // Repro of CodeRabbit finding: .ruler contains only agent markdown (now
+    // excluded by default), AND a previously-generated root AGENTS.md sits
+    // beside .ruler containing the very agent doc we're trying to exclude.
+    // The fallback path must NOT prepend that stale generated file.
+    const repoRoot = tmpDir;
+    const rulerDir = path.join(repoRoot, '.ruler');
+    const agentsDir = path.join(rulerDir, SUBAGENTS_DIR_NAME);
+    await fs.mkdir(agentsDir, { recursive: true });
+    await fs.writeFile(
+      path.join(agentsDir, 'reviewer.md'),
+      '---\nname: reviewer\ndescription: Reviews code\n---\n\nbody',
+    );
+    const staleRootAgents = path.join(repoRoot, 'AGENTS.md');
+    await fs.writeFile(
+      staleRootAgents,
+      '<!-- Source: .ruler/agents/reviewer.md -->\n\nbody from previous bugged run',
+    );
+
+    const files = await readMarkdownFiles(rulerDir); // default: skip agents
+    expect(files.map((f) => f.path)).toEqual(
+      expect.not.arrayContaining([staleRootAgents]),
+    );
+  });
+
   it('recurses into nested directories under .ruler/agents when included', async () => {
     const rulerDir = path.join(tmpDir, '.ruler');
     const nested = path.join(rulerDir, SUBAGENTS_DIR_NAME, 'nested');
