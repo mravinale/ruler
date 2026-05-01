@@ -81,15 +81,15 @@ describe('Subagents — rules concatenation matrix', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('no [agents] section: propagates (default-on) but does not include agents in rules', async () => {
+  it('no [agents] section: does not propagate and does not include agents in rules', async () => {
     await setupRulerProject(tmpDir);
     await writeReviewerSubagent(tmpDir);
 
     await runApply(tmpDir);
 
-    // Propagation default stays on (legacy v0.3.39 behavior); only the
-    // rules-concatenation bug is fixed.
-    expect(await nativeSubagentExists(tmpDir)).toBe(true);
+    // Per spec: propagation is disabled by default when [agents].enabled is
+    // not set, and `.ruler/agents/*.md` is excluded from rule concatenation.
+    expect(await nativeSubagentExists(tmpDir)).toBe(false);
     const content = await readClaudeMd(tmpDir);
     expect(content).not.toContain(SUBAGENT_SOURCE_MARKER);
     expect(content).not.toContain(SUBAGENT_BODY);

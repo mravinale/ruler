@@ -327,5 +327,43 @@ describe('ConfigLoader', () => {
       expect(config.agentConfigs.claude.enabled).toBe(true);
       expect(config.agentConfigs.cursor.enabled).toBe(false);
     });
+
+    // Spec test #8: unknown scalar keys under [agents] are neither reserved
+    // global fields nor per-agent objects, so they must fail with an
+    // actionable error that names the offending path.
+    it('rejects unknown scalar keys under [agents] with an actionable error', async () => {
+      const content = '[agents]\nfoo = true\n';
+      await fs.writeFile(path.join(rulerDir, 'ruler.toml'), content);
+      try {
+        await loadConfig({ projectRoot: tmpDir });
+        throw new Error('expected loadConfig to throw');
+      } catch (err) {
+        const message = (err as Error).message;
+        expect(message).toMatch(/Invalid configuration/i);
+        expect(message).toContain('agents.foo');
+      }
+    });
+
+    // Independence per spec: global `[agents].enabled` controls native
+    // subagent propagation only; `[agents.<name>].enabled` controls
+    // top-level output for that coding-agent integration. Neither should
+    // override the other.
+    it('keeps global [agents].enabled independent of per-agent enabled (off + on)', async () => {
+      const content =
+        '[agents]\nenabled = false\n\n[agents.claude]\nenabled = true\noutput_path = "CLAUDE.md"\n';
+      await fs.writeFile(path.join(rulerDir, 'ruler.toml'), content);
+      const config = await loadConfig({ projectRoot: tmpDir });
+      expect(config.subagents?.enabled).toBe(false);
+      expect(config.agentConfigs.claude.enabled).toBe(true);
+    });
+
+    it('keeps global [agents].enabled independent of per-agent enabled (on + off)', async () => {
+      const content =
+        '[agents]\nenabled = true\n\n[agents.claude]\nenabled = false\n';
+      await fs.writeFile(path.join(rulerDir, 'ruler.toml'), content);
+      const config = await loadConfig({ projectRoot: tmpDir });
+      expect(config.subagents?.enabled).toBe(true);
+      expect(config.agentConfigs.claude.enabled).toBe(false);
+    });
   });
 });
